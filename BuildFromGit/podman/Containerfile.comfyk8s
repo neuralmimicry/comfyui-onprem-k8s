@@ -1,20 +1,54 @@
 FROM nvidia/cuda:12.6.3-runtime-ubuntu22.04
-ENV TZ=Europe/London
-ENV DEBIAN_FRONTEND=noninteractive
+
+# Set non-interactive environment variables
+ENV DEBIAN_FRONTEND=noninteractive \
+    TZ=Europe/London \
+    LANG=en_GB.UTF-8 \
+    LANGUAGE=en_GB:en \
+    LC_ALL=en_GB.UTF-8
 
 WORKDIR /home/workspace
 
 # python
+RUN apt-get update && \
+    apt-get install -y software-properties-common apt-utils && \
+    add-apt-repository ppa:apt-fast/stable -y && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt-get update && \
+    apt-get install -y apt-fast && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN apt-get update \
-    && apt-get install -y mesa-utils libgl1-mesa-dri libgtkgl2.0-dev libgtkglext1-dev git software-properties-common apt-utils \
-    && add-apt-repository ppa:deadsnakes/ppa \
+    && apt-fast install -y mesa-utils libgl1-mesa-dri libgtkgl2.0-dev libgtkglext1-dev git curl \
     && apt-get update \
-    && apt install -y python3.12 python3.12-distutils curl \
+    && apt-fast install -y python3.12 \
     && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
-RUN apt-get install -y python3.12-dev
+
+RUN echo "en_GB.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen && \
+    update-locale LANG=en_GB.UTF-8 && \
+    ln -snf /usr/share/zoneinfo/Europe/London /etc/localtime && \
+    echo "Europe/London" > /etc/timezone && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set the default Python version to 3
+RUN ln -s /usr/bin/python3.12 /usr/bin/python
+
+# Set environment variables for virtual environment
+ENV VENV_DIR=/root/.venv
+ENV PATH="$VENV_DIR/bin:$PATH"
+
+# Create and activate the virtual environment, then install packages
+RUN python3.12 -m venv $VENV_DIR && \
+    source $VENV_DIR/bin/activate && \
+    pip install --upgrade pip
+RUN source $VENV_DIR/bin/activate && \
+    pip install --upgrade setuptools
 
 # torch and xformers
-RUN pip install torch==2.6.0 torchvision~=0.21.0 torchaudio~=2.6.0 --extra-index-url https://download.pytorch.org/whl/cu126
+RUN source $VENV_DIR/bin/activate && \
+    pip install torch==2.6.0 torchvision~=0.21.0 torchaudio~=2.6.0 --extra-index-url https://download.pytorch.org/whl/cu126
 
 ARG COMFYUI_VERSION
 ARG COMFYUI_MANAGER_VERSION
@@ -29,11 +63,12 @@ RUN cd ComfyUI/custom_nodes \
     && git checkout ${COMFYUI_MANAGER_VERSION}
 
 # install dependencies
-RUN pip install -r ComfyUI/requirements.txt
+RUN source $VENV_DIR/bin/activate && \
+    pip install -r ComfyUI/requirements.txt
 
 # RUN
 ENV PYTHON=python3.12
 ENV COMFYUI_PATH=/home/workspace/ComfyUI
 ENV PATH="$PATH:$COMFYUI_PATH"
 WORKDIR $COMFYUI_PATH
-CMD ["/bin/bash", "-c", "$PYTHON main.py --listen 0.0.0.0 --port 50000"]
+CMD ["/bin/bash", "-c", "source", "$VENV_DIR/bin/activate", "&&", "$PYTHON", "main.py", "--listen", "0.0.0.0", "--port", "50000"]

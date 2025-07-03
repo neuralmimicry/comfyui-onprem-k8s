@@ -6,7 +6,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
  && apt-get upgrade --yes \
- && apt-get install --yes --no-install-recommends \
+ && apt-fast install --yes --no-install-recommends \
         ca-certificates \
         dnsutils \
         iputils-ping \
@@ -16,14 +16,19 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 # install python packages.
+# Set environment variables for virtual environment
+ENV VENV_DIR=/root/.venv
+ENV PATH="$VENV_DIR/bin:$PATH"
 COPY BuildFromGit/podman/requirements-jupyter.txt requirements.txt
-RUN pip install -r requirements.txt
+RUN source $VENV_DIR/bin/activate && \
+    pip install -r requirements.txt
 
 # jupyter extensions.
 COPY extensions /home/extensions
-RUN pip install /home/extensions/jupyter_comfyui_proxy/.
+RUN source $VENV_DIR/bin/activate && \
+    pip install /home/extensions/jupyter_comfyui_proxy/.
 
 WORKDIR /home/user
 EXPOSE 8888
 ENTRYPOINT ["tini", "--"]
-CMD ["jupyter", "lab", "--ip", "0.0.0.0", "--port", "8888", "--allow-root"]
+CMD ["source", "$VENV_DIR/bin/activate", "&&", "jupyter", "lab", "--ip", "0.0.0.0", "--port", "8888", "--allow-root"]
