@@ -3,6 +3,7 @@ FROM $BASE_IMAGE
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# System packages: apt‐fast comes from the base image
 RUN apt-get update \
  && apt-fast install --yes --no-install-recommends \
         ca-certificates \
@@ -12,19 +13,28 @@ RUN apt-get update \
         git \
  && rm -rf /var/lib/apt/lists/*
 
-# Install python packages into the virtual environment
+# Copy the Jupyter requirements into the image
 COPY requirements-jupyter.txt requirements.txt
+
+# First, force‐reinstall setuptools & packaging (ignoring whatever’s there),
+# then install the pinned Jupyter deps, cleaning up afterward.
 RUN $VENV_DIR/bin/pip install \
       --no-cache-dir \
       --upgrade \
-      --force-reinstall \
-      -r requirements.txt \
-    && rm requirements.txt
+      --ignore-installed \
+        setuptools \
+        packaging && \
+    $VENV_DIR/bin/pip install \
+      --no-cache-dir \
+      --upgrade \
+      --ignore-installed \
+      -r requirements.txt && \
+    rm requirements.txt
 
-# Install jupyter extensions into the virtual environment
+# Copy & install your Jupyter extension
 COPY extensions /home/extensions
 RUN $VENV_DIR/bin/pip install --no-cache-dir /home/extensions/jupyter_comfyui_proxy/. \
-    && rm -rf /home/extensions
+ && rm -rf /home/extensions
 
 WORKDIR /home/user
 EXPOSE 8888
