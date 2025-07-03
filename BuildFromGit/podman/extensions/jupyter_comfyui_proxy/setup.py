@@ -3,8 +3,8 @@ import setuptools
 setuptools.setup(
     name="jupyter-comfyui-proxy",
     version="0.1.0",
-    url="https://github.com/curt-park/comfyui-onprem-k8s",
-    author="Curt Park",
+    url="https://github.com/neuralmimicry/comfyui-onprem-k8s",
+    author="Paul Isaac's",
     description="Jupyter extension to proxy ComfyUI",
     install_requires=["jupyter-server-proxy>=3.2.3,!=4.0.0,!=4.1.0"],
     entry_points={
