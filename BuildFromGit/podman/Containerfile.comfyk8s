@@ -33,15 +33,15 @@ RUN apt-get update \
            python3.12 \
            python3.12-dev \
            python3.12-venv \
-           python3-pip \
-    && rm -rf /var/lib/apt/lists/* # Clean up apt lists here too
+           python3-pip
 
 # Configure locales and timezone
 RUN echo "en_GB.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen && \
     update-locale LANG=en_GB.UTF-8 && \
     ln -snf /usr/share/zoneinfo/Europe/London /etc/localtime && \
-    echo "Europe/London" > /etc/timezone
+    echo "Europe/London" > /etc/timezone && \
+    rm -rf /var/lib/apt/lists/* # Clean up apt lists here too
 
 # Set the default Python version to 3
 RUN ln -s /usr/bin/python3.12 /usr/bin/python
@@ -58,8 +58,8 @@ RUN python3.12 -m venv $VENV_DIR && \
 # torch and xformers
 RUN $VENV_DIR/bin/pip install torch==2.6.0 torchvision~=0.21.0 torchaudio~=2.6.0 --extra-index-url https://download.pytorch.org/whl/cu126
 
-ARG COMFYUI_VERSION
-ARG COMFYUI_MANAGER_VERSION
+ARG COMFYUI_VERSION=
+ARG COMFYUI_MANAGER_VERSION=
 
 # clone ComfyUI
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git \
