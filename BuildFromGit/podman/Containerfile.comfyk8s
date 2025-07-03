@@ -15,15 +15,25 @@ RUN apt-get update && \
     add-apt-repository ppa:apt-fast/stable -y && \
     add-apt-repository ppa:deadsnakes/ppa -y && \
     apt-get update && \
-    apt-get install -y apt-fast && \
+    apt-get install -y apt-fast apt-transport-https && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update \
-    && apt-fast install -y mesa-utils libgl1-mesa-dri libgtkgl2.0-dev libgtkglext1-dev git curl \
-    && apt-get update \
-    && apt-fast install -y python3.12 \
-    && curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12
+    && apt-fast install -y --no-install-recommends \
+           locales \
+           tzdata \
+           mesa-utils \
+           libgl1-mesa-dri \
+           libgtkgl2.0-dev \
+           libgtkglext1-dev \
+           git \
+           curl \
+           pkg-config \
+           python3.12 \
+           python3.12-dev \
+           python3.12-venv \
+           python3-pip
 
 RUN echo "en_GB.UTF-8 UTF-8" > /etc/locale.gen && \
     locale-gen && \
