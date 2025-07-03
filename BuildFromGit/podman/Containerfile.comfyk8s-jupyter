@@ -17,12 +17,8 @@ RUN apt-get update \
  # Clean up apt lists to reduce image size.
  && rm -rf /var/lib/apt/lists/*
 
-# The VENV_DIR and PATH environment variables are already set and configured
-# by the base image to point to /root/.venv and include its bin directory.
-# This means we can directly call pip from the virtual environment.
-
 # Install python packages into the virtual environment
-COPY BuildFromGit/podman/requirements-jupyter.txt requirements.txt
+COPY requirements-jupyter.txt requirements.txt
 RUN $VENV_DIR/bin/pip install -r requirements.txt \
     # Clean up the copied requirements file after installation
     && rm requirements.txt
