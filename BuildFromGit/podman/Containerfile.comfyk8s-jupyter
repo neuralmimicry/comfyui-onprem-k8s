@@ -1,34 +1,44 @@
-# https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/main/images/singleuser-sample/Dockerfile
+# Use your previously built base image
 ARG BASE_IMAGE
-FROM $BASE_IMAGE
+FROM ${BASE_IMAGE}
 
+# Use bash for RUN steps (so we can rely on pipefail, etc.)
+SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
+
+# non-interactive apt
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update \
- && apt-get upgrade --yes \
- && apt-fast install --yes --no-install-recommends \
+# 1) system updates & installs in one layer
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
         ca-certificates \
         dnsutils \
         iputils-ping \
         tini \
-        # requirement for nbgitpuller
-        git \
- && rm -rf /var/lib/apt/lists/*
+        git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# install python packages.
-# Set environment variables for virtual environment
-ENV VENV_DIR=/root/.venv
-ENV PATH="$VENV_DIR/bin:$PATH"
-COPY BuildFromGit/podman/requirements-jupyter.txt requirements.txt
-RUN source $VENV_DIR/bin/activate && \
-    pip install -r requirements.txt
+# (venv_dir and PATH are inherited from the base image)
+# ENV VENV_DIR=/home/workspace/.venv
+# ENV PATH="$VENV_DIR/bin:$PATH"
 
-# jupyter extensions.
-COPY extensions /home/extensions
-RUN source $VENV_DIR/bin/activate && \
-    pip install /home/extensions/jupyter_comfyui_proxy/.
+WORKDIR /home/workspace
 
-WORKDIR /home/user
+# 2) switch to non-root for Python package installs
+USER workspace
+
+# Copy and install Jupyter dependencies
+COPY BuildFromGit/podman/requirements-jupyter.txt ./requirements-jupyter.txt
+RUN $VENV_DIR/bin/pip install --no-cache-dir -r requirements-jupyter.txt
+
+# Copy and install your Jupyter extension
+COPY extensions /home/workspace/extensions
+RUN $VENV_DIR/bin/pip install --no-cache-dir /home/workspace/extensions/jupyter_comfyui_proxy
+
+# 3) runtime settings
 EXPOSE 8888
+
 ENTRYPOINT ["tini", "--"]
-CMD ["source", "$VENV_DIR/bin/activate", "&&", "jupyter", "lab", "--ip", "0.0.0.0", "--port", "8888", "--allow-root"]
+CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888"]
