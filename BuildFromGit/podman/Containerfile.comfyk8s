@@ -19,21 +19,21 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update \
-    && apt-fast install -y --no-install-recommends \
-           locales \
-           tzdata \
-           mesa-utils \
-           libgl1-mesa-dri \
-           libgtkgl2.0-dev \
-           libgtkglext1-dev \
-           git \
-           curl \
-           pkg-config \
-           python3.12 \
-           python3.12-dev \
-           python3.12-venv \
-           python3-pip
+RUN apt-get update && \
+    apt-fast install -y --no-install-recommends \
+        locales \
+        tzdata \
+        mesa-utils \
+        libgl1-mesa-dri \
+        libgtkgl2.0-dev \
+        libgtkglext1-dev \
+        git \
+        curl \
+        pkg-config \
+        python3.12 \
+        python3.12-dev \
+        python3.12-venv \
+        python3-pip
 
 # Configure locales and timezone
 RUN echo "en_GB.UTF-8 UTF-8" > /etc/locale.gen && \
@@ -41,7 +41,7 @@ RUN echo "en_GB.UTF-8 UTF-8" > /etc/locale.gen && \
     update-locale LANG=en_GB.UTF-8 && \
     ln -snf /usr/share/zoneinfo/Europe/London /etc/localtime && \
     echo "Europe/London" > /etc/timezone && \
-    rm -rf /var/lib/apt/lists/* # Clean up apt lists here too
+    rm -rf /var/lib/apt/lists/*
 
 # Set the default Python version to 3
 RUN ln -s /usr/bin/python3.12 /usr/bin/python
