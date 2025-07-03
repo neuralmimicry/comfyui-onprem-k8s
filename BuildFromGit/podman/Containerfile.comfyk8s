@@ -85,6 +85,11 @@ RUN /bin/bash -eo pipefail -c "\
     \$VENV_DIR/bin/pip install --no-cache-dir -r ComfyUI/requirements.txt \
 "
 
+# 8a) Install additional Python dependencies
+RUN /bin/bash -eo pipefail -c "\
+    \$VENV_DIR/bin/pip install --no-cache-dir pyyaml \
+"
+
 # 9) Final environment & entrypoint
 ENV PYTHON=python3.12 \
     COMFYUI_PATH=/home/workspace/ComfyUI \
