@@ -1,44 +1,49 @@
-# Use your previously built base image
+# https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/main/images/singleuser-sample/Dockerfile
 ARG BASE_IMAGE
-FROM ${BASE_IMAGE}
+FROM $BASE_IMAGE
 
-# Use bash for RUN steps (so we can rely on pipefail, etc.)
-SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
-
-# non-interactive apt
+# Set non-interactive environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-# 1) system updates & installs in one layer
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
+# Update and install necessary system packages
+# Note: apt-fast is installed in the base image, so we can use it directly here.
+RUN apt-get update \
+ && apt-fast install --yes --no-install-recommends \
         ca-certificates \
         dnsutils \
         iputils-ping \
         tini \
-        git && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+        git \
+ # Clean up apt lists to reduce image size.
+ && rm -rf /var/lib/apt/lists/*
 
-# (venv_dir and PATH are inherited from the base image)
-# ENV VENV_DIR=/home/workspace/.venv
-# ENV PATH="$VENV_DIR/bin:$PATH"
+# The VENV_DIR and PATH environment variables are already set and configured
+# by the base image to point to /root/.venv and include its bin directory.
+# This means we can directly call pip from the virtual environment.
 
-WORKDIR /home/workspace
+# Install python packages into the virtual environment
+COPY BuildFromGit/podman/requirements-jupyter.txt requirements.txt
+RUN $VENV_DIR/bin/pip install -r requirements.txt \
+    # Clean up the copied requirements file after installation
+    && rm requirements.txt
 
-# 2) switch to non-root for Python package installs
-USER workspace
+# Install jupyter extensions into the virtual environment
+COPY extensions /home/extensions
+RUN $VENV_DIR/bin/pip install /home/extensions/jupyter_comfyui_proxy/. \
+    # Clean up the copied extensions directory after installation
+    && rm -rf /home/extensions
 
-# Copy and install Jupyter dependencies
-COPY BuildFromGit/podman/requirements-jupyter.txt ./requirements-jupyter.txt
-RUN $VENV_DIR/bin/pip install --no-cache-dir -r requirements-jupyter.txt
+# Set the working directory for the application
+WORKDIR /home/user
 
-# Copy and install your Jupyter extension
-COPY extensions /home/workspace/extensions
-RUN $VENV_DIR/bin/pip install --no-cache-dir /home/workspace/extensions/jupyter_comfyui_proxy
-
-# 3) runtime settings
+# Expose the Jupyter Lab port
 EXPOSE 8888
 
+# Set tini as the entrypoint for proper signal handling
 ENTRYPOINT ["tini", "--"]
-CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888"]
+
+# Command to run Jupyter Lab.
+# Since $VENV_DIR/bin is in the PATH (set by the base image),
+# 'jupyter' command will correctly resolve to the one within the virtual environment.
+# No need for 'source' or explicit pathing like '/root/.venv/bin/jupyter'.
+CMD ["jupyter", "lab", "--ip", "0.0.0.0", "--port", "8888", "--allow-root"]

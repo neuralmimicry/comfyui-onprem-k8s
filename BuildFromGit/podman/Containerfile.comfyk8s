@@ -1,72 +1,81 @@
 FROM nvidia/cuda:12.6.3-runtime-ubuntu22.04
 
-# Use bash for RUN steps
-SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
-
-# non-interactive tzdata and locale
+# Set non-interactive environment variables
 ENV DEBIAN_FRONTEND=noninteractive \
-    TZ=Europe/London
-
-# install all OS deps, set locale/timezone, clean up in one layer
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-      ca-certificates \
-      tzdata \
-      locales \
-      git \
-      curl \
-      pkg-config \
-      python3.12 \
-      python3.12-dev \
-      python3.12-venv \
-      python3-pip \
-      libgl1-mesa-dri \
-      libgtkglext1-dev && \
-    # locale setup
-    echo "en_GB.UTF-8 UTF-8" > /etc/locale.gen && \
-    locale-gen && \
-    update-locale LANG=en_GB.UTF-8 && \
-    # timezone setup
-    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
-    echo $TZ > /etc/timezone && \
-    # cleanup
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# set python alternative
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
-
-# virtualenv path
-ENV VENV_DIR=/home/workspace/.venv
-ENV PATH="$VENV_DIR/bin:$PATH"
+    TZ=Europe/London \
+    LANG=en_GB.UTF-8 \
+    LANGUAGE=en_GB:en \
+    LC_ALL=en_GB.UTF-8
 
 WORKDIR /home/workspace
 
-# prepare app files: copy only requirements first
-COPY ComfyUI/requirements.txt ./requirements.txt
+# python
+RUN apt-get update && \
+    apt-get install -y software-properties-common apt-utils && \
+    add-apt-repository ppa:apt-fast/stable -y && \
+    add-apt-repository ppa:deadsnakes/ppa -y && \
+    apt-get update && \
+    apt-get install -y apt-fast apt-transport-https && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# create venv & install Python deps
-RUN python -m venv $VENV_DIR && \
-    $VENV_DIR/bin/pip install --no-cache-dir --upgrade pip setuptools && \
-    $VENV_DIR/bin/pip install --no-cache-dir -r requirements.txt
+RUN apt-get update \
+    && apt-fast install -y --no-install-recommends \
+           locales \
+           tzdata \
+           mesa-utils \
+           libgl1-mesa-dri \
+           libgtkgl2.0-dev \
+           libgtkglext1-dev \
+           git \
+           curl \
+           pkg-config \
+           python3.12 \
+           python3.12-dev \
+           python3.12-venv \
+           python3-pip \
+    && rm -rf /var/lib/apt/lists/* # Clean up apt lists here too
 
-# now fetch the app code
+# Configure locales and timezone
+RUN echo "en_GB.UTF-8 UTF-8" > /etc/locale.gen && \
+    locale-gen && \
+    update-locale LANG=en_GB.UTF-8 && \
+    ln -snf /usr/share/zoneinfo/Europe/London /etc/localtime && \
+    echo "Europe/London" > /etc/timezone
+
+# Set the default Python version to 3
+RUN ln -s /usr/bin/python3.12 /usr/bin/python
+
+# Set environment variables for virtual environment
+ENV VENV_DIR=/root/.venv
+# Ensure the virtual environment's bin directory is at the beginning of the PATH
+ENV PATH="$VENV_DIR/bin:$PATH"
+
+# Create virtual environment and install initial packages
+RUN python3.12 -m venv $VENV_DIR && \
+    $VENV_DIR/bin/pip install --upgrade pip setuptools
+
+# torch and xformers
+RUN $VENV_DIR/bin/pip install torch==2.6.0 torchvision~=0.21.0 torchaudio~=2.6.0 --extra-index-url https://download.pytorch.org/whl/cu126
+
 ARG COMFYUI_VERSION
 ARG COMFYUI_MANAGER_VERSION
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git && \
-    cd ComfyUI && \
-    git checkout ${COMFYUI_VERSION} && \
-    cd custom_nodes && \
-    git clone https://github.com/ltdrdata/ComfyUI-Manager.git && \
-    cd ComfyUI-Manager && \
-    git checkout ${COMFYUI_MANAGER_VERSION}
 
-# switch to non-root
-RUN useradd --create-home workspace && \
-    chown -R workspace:workspace /home/workspace
-USER workspace
+# clone ComfyUI
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git \
+    && cd ComfyUI \
+    && git checkout ${COMFYUI_VERSION}
+RUN cd ComfyUI/custom_nodes \
+    && git clone https://github.com/ltdrdata/ComfyUI-Manager.git \
+    && cd ComfyUI-Manager \
+    && git checkout ${COMFYUI_MANAGER_VERSION}
 
-WORKDIR /home/workspace/ComfyUI
-EXPOSE 50000
+# install dependencies
+RUN $VENV_DIR/bin/pip install -r ComfyUI/requirements.txt
 
-ENTRYPOINT ["/home/workspace/.venv/bin/python", "main.py", "--listen", "0.0.0.0", "--port", "50000"]
+# RUN
+ENV PYTHON=python3.12
+ENV COMFYUI_PATH=/home/workspace/ComfyUI
+ENV PATH="$PATH:$COMFYUI_PATH" # This line is redundant if PYTHON points to venv, but harmless.
+WORKDIR $COMFYUI_PATH
+CMD ["$PYTHON", "main.py", "--listen", "0.0.0.0", "--port", "50000"]
