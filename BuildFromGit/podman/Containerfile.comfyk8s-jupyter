@@ -1,12 +1,8 @@
-# https://github.com/jupyterhub/zero-to-jupyterhub-k8s/blob/main/images/singleuser-sample/Dockerfile
 ARG BASE_IMAGE
 FROM $BASE_IMAGE
 
-# Set non-interactive environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Update and install necessary system packages
-# Note: apt-fast is installed in the base image, so we can use it directly here.
 RUN apt-get update \
  && apt-fast install --yes --no-install-recommends \
         ca-certificates \
@@ -14,32 +10,24 @@ RUN apt-get update \
         iputils-ping \
         tini \
         git \
- # Clean up apt lists to reduce image size.
  && rm -rf /var/lib/apt/lists/*
 
 # Install python packages into the virtual environment
 COPY requirements-jupyter.txt requirements.txt
-RUN $VENV_DIR/bin/pip install -r requirements.txt \
-    # Clean up the copied requirements file after installation
+RUN $VENV_DIR/bin/pip install \
+      --no-cache-dir \
+      --upgrade \
+      --force-reinstall \
+      -r requirements.txt \
     && rm requirements.txt
 
 # Install jupyter extensions into the virtual environment
 COPY extensions /home/extensions
-RUN $VENV_DIR/bin/pip install /home/extensions/jupyter_comfyui_proxy/. \
-    # Clean up the copied extensions directory after installation
+RUN $VENV_DIR/bin/pip install --no-cache-dir /home/extensions/jupyter_comfyui_proxy/. \
     && rm -rf /home/extensions
 
-# Set the working directory for the application
 WORKDIR /home/user
-
-# Expose the Jupyter Lab port
 EXPOSE 8888
 
-# Set tini as the entrypoint for proper signal handling
-ENTRYPOINT ["tini", "--"]
-
-# Command to run Jupyter Lab.
-# Since $VENV_DIR/bin is in the PATH (set by the base image),
-# 'jupyter' command will correctly resolve to the one within the virtual environment.
-# No need for 'source' or explicit pathing like '/root/.venv/bin/jupyter'.
-CMD ["jupyter", "lab", "--ip", "0.0.0.0", "--port", "8888", "--allow-root"]
+ENTRYPOINT ["tini","--"]
+CMD ["jupyter","lab","--ip","0.0.0.0","--port","8888","--allow-root"]
