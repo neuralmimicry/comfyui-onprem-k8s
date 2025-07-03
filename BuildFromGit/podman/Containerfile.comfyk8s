@@ -1,8 +1,5 @@
 FROM nvidia/cuda:12.6.3-runtime-ubuntu22.04
 
-# Use bash in all RUN steps so we can safely use bash-isms
-SHELL ["/bin/bash", "-eo", "pipefail", "-c"]
-
 # non-interactive installs, timezone & locale
 ENV DEBIAN_FRONTEND=noninteractive \
     TZ=Europe/London \
@@ -12,7 +9,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 WORKDIR /home/workspace
 
-RUN apt-get update && \
+RUN ["bash","-eo","pipefail","-lc", "\
+    apt-get update && \
     apt-get install -y --no-install-recommends \
       software-properties-common \
       apt-utils && \
@@ -42,41 +40,54 @@ RUN apt-get update && \
     echo $TZ > /etc/timezone && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+"]
 
 # Make 'python' point at python3.12
-RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+RUN ["bash","-eo","pipefail","-lc", "\
+    update-alternatives --install /usr/bin/python python /usr/bin/python3.12 1
+"]
 
 # Virtualenv setup
 ENV VENV_DIR=/root/.venv
 ENV PATH="$VENV_DIR/bin:$PATH"
 
-RUN python -m venv $VENV_DIR && \
+RUN ["bash","-eo","pipefail","-lc", "\
+    python -m venv $VENV_DIR && \
     $VENV_DIR/bin/pip install --no-cache-dir --upgrade pip setuptools
+"]
 
 # torch + xformers
-RUN $VENV_DIR/bin/pip install --no-cache-dir \
+RUN ["bash","-eo","pipefail","-lc", "\
+    $VENV_DIR/bin/pip install --no-cache-dir \
       torch==2.6.0 \
       torchvision~=0.21.0 \
       torchaudio~=2.6.0 \
       --extra-index-url https://download.pytorch.org/whl/cu126
+"]
 
 # These ARGs no longer have empty '='s
 ARG COMFYUI_VERSION
 ARG COMFYUI_MANAGER_VERSION
 
 # Clone ComfyUI at the specified version
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git && \
+RUN ["bash","-eo","pipefail","-lc", "\
+    git clone https://github.com/comfyanonymous/ComfyUI.git && \
     cd ComfyUI && \
     git checkout ${COMFYUI_VERSION}
+"]
 
 # Clone the Manager plugin
-RUN cd ComfyUI/custom_nodes && \
+RUN ["bash","-eo","pipefail","-lc", "\
+    cd ComfyUI/custom_nodes && \
     git clone https://github.com/ltdrdata/ComfyUI-Manager.git && \
     cd ComfyUI-Manager && \
     git checkout ${COMFYUI_MANAGER_VERSION}
+"]
 
 # Install Python deps from requirements.txt
-RUN $VENV_DIR/bin/pip install --no-cache-dir -r ComfyUI/requirements.txt
+RUN ["bash","-eo","pipefail","-lc", "\
+    $VENV_DIR/bin/pip install --no-cache-dir -r ComfyUI/requirements.txt
+"]
 
 # Runtime environment
 ENV PYTHON=python3.12
