@@ -423,7 +423,7 @@ singleuser:
       volumeNameTemplate: volume-{username}{servername}
       storageAccessModes: [ReadWriteOnce]
   image:
-    name: ghcr.io/curt-park/comfyui-onprem-k8s
+    name: ghcr.io/neuralmimicry/comfyui-onprem-k8s
     tag: "comfyui-jupyter-8115d8c"
     pullPolicy:
     pullSecrets: []
