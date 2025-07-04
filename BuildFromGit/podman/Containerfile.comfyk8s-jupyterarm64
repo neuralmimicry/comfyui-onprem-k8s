@@ -3,6 +3,10 @@ FROM $BASE_IMAGE
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Make sure the venv’s bin directory is on PATH
+# (so jupyter, pip, etc. are found)
+ENV PATH="$VENV_DIR/bin:$PATH"
+
 # System packages: apt‐fast comes from the base image
 RUN apt-get update \
  && apt-fast install --yes --no-install-recommends \
@@ -39,5 +43,6 @@ RUN $VENV_DIR/bin/pip install --no-cache-dir /home/extensions/jupyter_comfyui_pr
 WORKDIR /home/user
 EXPOSE 8888
 
-ENTRYPOINT ["/usr/bin/tini","--"]
+# Source the venv activation, then exec tini to reap zombies and forward signals
+ENTRYPOINT [ "sh", "-c", ". \"$VENV_DIR/bin/activate\" && exec /usr/bin/tini -- \"$@\"", "--" ]
 CMD ["jupyter","lab","--ip","0.0.0.0","--port","8888","--allow-root"]
