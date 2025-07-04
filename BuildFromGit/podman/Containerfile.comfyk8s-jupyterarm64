@@ -7,12 +7,16 @@ ENV DEBIAN_FRONTEND=noninteractive
 # (so jupyter, pip, etc. are found)
 ENV PATH="$VENV_DIR/bin:$PATH"
 
+# tell the jupyter_comfyui_proxy extension how to reach ComfyUI
+ENV COMFYUI_PROXY_TARGET="http://127.0.0.1:50000"
+
 # System packages: apt‐fast comes from the base image
 RUN apt-get update \
  && apt-fast install --yes --no-install-recommends \
         ca-certificates \
         dnsutils \
         iputils-ping \
+        nodejs \
         tini \
         git \
  && rm -rf /var/lib/apt/lists/*
@@ -34,6 +38,26 @@ RUN $VENV_DIR/bin/pip install \
       --ignore-installed \
       -r requirements.txt && \
     rm requirements.txt
+
+# configure server-proxy to mount ComfyUI at /ComfyUI
+RUN mkdir -p /etc/jupyter/jupyter_server_config.d \
+ && cat <<'JSON' > /etc/jupyter/jupyter_server_config.d/20-comfyui-proxy.json
+{
+  "ServerProxy": {
+    "servers": {
+      "comfyui": {
+        "port": 50000,
+        "timeout": 60,
+        "absolute_url": true,
+        "launcher_entry": {
+          "title": "ComfyUI",
+          "icon_path": ""
+        }
+      }
+    }
+  }
+}
+JSON
 
 # Copy & install your Jupyter extension
 COPY extensions /home/extensions

@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="jupyter-comfyui-proxy",
-    version="0.1.0",
+    version="0.1.1",
     url="https://github.com/neuralmimicry/comfyui-onprem-k8s",
     author="Paul Isaac's",
     description="Jupyter extension to proxy ComfyUI",
