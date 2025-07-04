@@ -4,9 +4,7 @@ import argparse
 import requests
 import uuid
 import json
-import urllib.parse
 import time
-import threading
 import io
 
 import utils

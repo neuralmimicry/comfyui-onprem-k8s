@@ -68,7 +68,7 @@ or:
 helm install traefik oci://ghcr.io/traefik/helm/traefik
 ```
 
-You can customize the install with a `values` file. There are some [EXAMPLES](./EXAMPLES.md) provided.
+You can customize the install with a `values` file. There are some [EXAMPLES](EXAMPLES.md) provided.
 Complete documentation on all available parameters is in the [default file](./traefik/values.yaml).
 
 ```bash
