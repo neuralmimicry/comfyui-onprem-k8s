@@ -63,7 +63,7 @@ JSON
 COPY extensions /home/extensions
 RUN $VENV_DIR/bin/pip install --no-cache-dir /home/extensions/jupyter_comfyui_proxy/. \
  && rm -rf /home/extensions \
- && $VENV_DIR/bin/jupyter lab build --dev-build=False --minimize=False --clean
+ && $VENV_DIR/bin/jupyter lab build --dev-build=False --minimize=False
 
 WORKDIR /home/user
 EXPOSE 8888
