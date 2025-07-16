@@ -1,4 +1,4 @@
-# ComfyUI on an On-Premise Kubernetes Cluster
+# ComfyUI on an On-Premise/Hybrid/Cloud flexible Kubernetes Cluster
 
 This project aims to provide two different types of ComfyUI services on Kubernetes:
 1. API Service for Production
